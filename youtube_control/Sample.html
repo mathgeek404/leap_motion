@@ -64,7 +64,7 @@ Leap.loop(controllerOptions, function(frame) {
     var scaleFactor = frame.scaleFactor(previousFrame);
     frameString += "Scale factor: " + scaleFactor.toFixed(2) + "<br />";
   }
-  frameOutput.innerHTML = "<div style='width:300px; float:left; padding:5px'>" + frameString + "</div>";
+  //frameOutput.innerHTML = "<div style='width:300px; float:left; padding:5px'>" + frameString + "</div>";
 
   // Display Hand object data
   var handOutput = document.getElementById("handData");
@@ -84,10 +84,22 @@ Leap.loop(controllerOptions, function(frame) {
       handString += "Arm direction: " + vectorToString(hand.arm.direction()) + "<br />";
       handString += "Arm center: " + vectorToString(hand.arm.center()) + "<br />";
       handString += "Arm up vector: " + vectorToString(hand.arm.basis[1]) + "<br />";
+      
 
       // Hand motion factors
       if (previousFrame && previousFrame.valid) {
         var translation = hand.translation(previousFrame);
+          
+        
+        if (hand.pinchStrength  >= 0.90) {
+            if (translation[0] < -5.0) {
+                player.seekTo(player.getCurrentTime() - 10,true)
+            }
+            else if (translation[0] > 5.0) {
+                player.seekTo(player.getCurrentTime() + 10,true)
+            }
+        }
+          
         handString += "Translation: " + vectorToString(translation) + " mm<br />";
 
         var rotationAxis = hand.rotationAxis(previousFrame, 2);
@@ -117,7 +129,7 @@ Leap.loop(controllerOptions, function(frame) {
   else {
     handString += "No hands";
   }
-  handOutput.innerHTML = handString;
+  //handOutput.innerHTML = handString;
 
   // Display Pointable (finger and tool) object data
   var pointableOutput = document.getElementById("pointableData");
@@ -127,7 +139,8 @@ Leap.loop(controllerOptions, function(frame) {
     var boneTypeMap = ["Metacarpal", "Proximal phalanx", "Intermediate phalanx", "Distal phalanx"];
     for (var i = 0; i < frame.pointables.length; i++) {
       var pointable = frame.pointables[i];
-
+        
+    
       pointableString += "<div style='width:250px; float:left; padding:5px'>";
 
       if (pointable.tool) {
@@ -156,6 +169,7 @@ Leap.loop(controllerOptions, function(frame) {
         });
         pointableString += "Tip position: " + vectorToString(pointable.tipPosition) + " mm<br />";
         pointableString += "</div>";
+        
       }
     }
   }
@@ -182,16 +196,27 @@ Leap.loop(controllerOptions, function(frame) {
 
       switch (gesture.type) {
         case "circle":
-          gestureString += "center: " + vectorToString(gesture.center) + " mm, "
+         
+         gestureString += "center: " + vectorToString(gesture.center) + " mm, "
                         + "normal: " + vectorToString(gesture.normal, 2) + ", "
                         + "radius: " + gesture.radius.toFixed(1) + " mm, "
                         + "progress: " + gesture.progress.toFixed(2) + " rotations";
+        
+              
           break;
         case "swipe":
+        
           gestureString += "start position: " + vectorToString(gesture.startPosition) + " mm, "
                         + "current position: " + vectorToString(gesture.position) + " mm, "
                         + "direction: " + vectorToString(gesture.direction, 1) + ", "
-                        + "speed: " + gesture.speed.toFixed(1) + " mm/s";
+                      + "speed: " + gesture.speed.toFixed(1) + " mm/s";
+        
+          if (gesture.direction[0] < -0.5) {
+                player.seekTo(player.getCurrentTime() - 10,true)
+            }
+          else if (gesture.direction[0] > 0.5) {
+                player.seekTo(player.getCurrentTime() + 10,true)
+            }
           break;
         case "screenTap":
         case "keyTap":
@@ -243,6 +268,50 @@ function pauseForGestures() {
 </head>
 <body>
 <h1>Leap Motion JavaScript Sample</h1>
+<div id="player"></div>
+
+<script>
+      // 2. This code loads the IFrame Player API code asynchronously.
+      var tag = document.createElement('script');
+
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      // 3. This function creates an <iframe> (and YouTube player)
+      //    after the API code downloads.
+      var player;
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+          height: '390',
+          width: '640',
+          videoId: 'M7lc1UVf-VE',
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      }
+
+      // 4. The API will call this function when the video player is ready.
+      function onPlayerReady(event) {
+        event.target.playVideo();
+      }
+
+      // 5. The API calls this function when the player's state changes.
+      //    The function indicates that when playing a video (state=1),
+      //    the player should play for six seconds and then stop.
+      var done = false;
+      function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING && !done) {
+          //setTimeout(stopVideo, 6000);
+          done = true;
+        }
+      }
+      function stopVideo() {
+        player.stopVideo();
+      }
+</script>
 <div id="main">
   <button id="pause" onclick="togglePause()">Pause</button>
   <input type="checkbox" id="pauseOnGesture" onclick="pauseForGestures()">Pause on gesture</input>
